@@ -1,3 +1,5 @@
+![MIT License](https://img.shields.io/badge/License-MIT-green)
+![Chrome Extension](https://img.shields.io/badge/Chrome%20Extension-v17.0-blue)
 # Steam Monitor
 
 Мониторинг цен предметов Steam Market с индивидуальными триггерами и рандомным интервалом проверки.
@@ -59,5 +61,6 @@
 ---
 
 ## Автор
+
 
 GFL25
