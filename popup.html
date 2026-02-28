@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<h2>Steam Monitor — GFL25</h2>
+
+<div class="tabs">
+  <button id="tabMonitor" class="active">Мониторинг</button>
+  <button id="tabAdd">Добавить</button>
+</div>
+
+<div id="monitorView"></div>
+
+<div id="addView" style="display:none;">
+
+  <textarea id="url" placeholder="Ссылка на предмет"></textarea>
+
+  <select id="currency">
+    <option value="5">₽</option>
+    <option value="37">₸</option>
+  </select>
+
+  <input id="priceBelow" placeholder="Цена ниже">
+  <input id="priceAbove" placeholder="Цена выше">
+
+  <button id="add">Добавить предмет</button>
+
+  <hr>
+
+  <h3>Интервал проверки</h3>
+
+  <input id="minInterval" placeholder="Мин (сек)">
+  <input id="maxInterval" placeholder="Макс (сек)">
+  <input id="minChance" placeholder="Шанс мин (%)">
+
+  <button id="saveInterval">Сохранить интервал</button>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+body{
+  background:#0f1720;
+  color:white;
+  font-family:Arial;
+  width:420px;
+  padding:10px;
+}
+
+.tabs button{
+  width:50%;
+  padding:8px;
+  background:#1b2632;
+  color:white;
+  border:none;
+}
+
+.card{
+  background:#1b2632;
+  padding:8px;
+  margin-top:8px;
+  border-radius:6px;
+}
+
+.name{
+  font-weight:bold;
+  margin-bottom:4px;
+}
+
+textarea,input,select{
+  width:100%;
+  margin-bottom:8px;
+  padding:6px;
+  background:#1b2632;
+  border:1px solid #2c3e50;
+  color:white;
+  border-radius:6px;
+}
+
+button{
+  padding:6px;
+  margin-top:6px;
+  cursor:pointer;
+}
+
+.timer{
+  margin-bottom:10px;
+}
+
+#toast{
+  position:fixed;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#0095ff;
+  padding:6px 15px;
+  border-radius:6px;
+  display:none;
+}
+
+.status{
+  margin-bottom:12px;
+  padding:8px;
+  background:#1b2632;
+  border-radius:6px;
+  font-size:13px;
+}
+
+.card.near{
+  border:2px solid #ffc107;
+  box-shadow:0 0 8px rgba(255,193,7,0.6);
+}
+
+.triggers{
+  margin-top:4px;
+  font-weight:500;
+}
+
+.last{
+  font-size:12px;
+  opacity:0.7;
+}
