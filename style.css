@@ -6,12 +6,22 @@ body{
   padding:10px;
 }
 
+.tabs{
+  display:flex;
+  gap:6px;
+}
+
 .tabs button{
-  width:50%;
+  flex:1;
   padding:8px;
   background:#1b2632;
   color:white;
   border:none;
+  border-radius:6px;
+}
+
+.tabs button.active{
+  background:#2f4257;
 }
 
 .card{
@@ -92,4 +102,34 @@ button{
 .last{
   font-size:12px;
   opacity:0.7;
+}
+
+.history-card{
+  margin-top:6px;
+}
+
+
+.controls{
+  margin-bottom:10px;
+}
+
+.item-switch-list{
+  margin-top:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.item-switch-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  font-size:12px;
+}
+
+.item-switch-row span{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
