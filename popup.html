@@ -10,10 +10,25 @@
 
 <div class="tabs">
   <button id="tabMonitor" class="active">Мониторинг</button>
+  <button id="tabHistory">История</button>
   <button id="tabAdd">Добавить</button>
 </div>
 
 <div id="monitorView"></div>
+
+<div id="historyView" style="display:none;">
+  <label class="field-label" for="historyRange">Период</label>
+  <select id="historyRange">
+    <option value="1800000">За 30 мин.</option>
+    <option value="3600000">За 1ч.</option>
+    <option value="7200000">За 2ч.</option>
+    <option value="14400000">За 4ч.</option>
+    <option value="43200000">За 12ч.</option>
+    <option value="86400000">За 1 день.</option>
+    <option value="604800000">За 7 дней.</option>
+  </select>
+  <div id="historyContent"></div>
+</div>
 
 <div id="addView" style="display:none;">
 

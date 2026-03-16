@@ -32,10 +32,12 @@ function calculateDelay(settings) {
 }
 
 async function scheduleNextAlarm() {
-  const data = await chrome.storage.local.get("items");
+  const data = await chrome.storage.local.get(["items", "monitoringEnabled"]);
   const items = data.items || [];
+  const monitoringEnabled = data.monitoringEnabled !== false;
+  const activeItems = items.filter((item) => item.monitoringEnabled !== false);
 
-  if (!items.length) {
+  if (!items.length || !monitoringEnabled || !activeItems.length) {
     await chrome.alarms.clear(ALARM_NAME);
     await chrome.storage.local.set({ nextCheckTime: 0 });
     return;
@@ -65,12 +67,19 @@ function parseSteamPrice(lowestPrice) {
 }
 
 async function checkAll() {
-  const data = await chrome.storage.local.get("items");
+  const data = await chrome.storage.local.get(["items", "priceHistory", "monitoringEnabled"]);
   const items = data.items || [];
+  const history = data.priceHistory || [];
+  const monitoringEnabled = data.monitoringEnabled !== false;
 
-  if (!items.length) return;
+  if (!items.length || !monitoringEnabled) return;
+
+  let shouldStopMonitoring = false;
 
   for (const item of items) {
+    if (item.monitoringEnabled === false) {
+      continue;
+    }
     let response;
 
     try {
@@ -119,7 +128,17 @@ async function checkAll() {
 
     item.previousPrice = price;
 
+    history.push({
+      name: item.name,
+      price,
+      currency: item.currency,
+      timestamp: Date.now(),
+      event: triggered ? "trigger" : "check"
+    });
+
     if (triggered) {
+      item.monitoringEnabled = false;
+      shouldStopMonitoring = true;
       chrome.notifications.create({
         type: "basic",
         iconUrl: "icon.png",
@@ -142,7 +161,14 @@ async function checkAll() {
     }
   }
 
-  await chrome.storage.local.set({ items });
+  const trimmedHistory = history.slice(-1000);
+
+  await chrome.storage.local.set({
+    items,
+    priceHistory: trimmedHistory,
+    monitoringEnabled: shouldStopMonitoring ? false : monitoringEnabled
+  });
+
   await scheduleNextAlarm();
 }
 
@@ -153,12 +179,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.items || changes.globalSettings) {
+  if (changes.items || changes.globalSettings || changes.monitoringEnabled) {
     scheduleNextAlarm();
   }
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  await chrome.storage.local.set({ monitoringEnabled: true });
   scheduleNextAlarm();
 });
 
