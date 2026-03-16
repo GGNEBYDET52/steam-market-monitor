@@ -1,13 +1,21 @@
-/* Steam Monitor Ñ GFL25 */
-/* Stable version without try/catch */
+/* Steam Monitor â€” GFL25 */
+
+const ALARM_NAME = "steamCheck";
 
 async function getSettings() {
   const data = await chrome.storage.local.get("globalSettings");
-  return data.globalSettings || {
-    minInterval: 60,
-    maxInterval: 120,
-    minChance: 30
-  };
+  const settings = data.globalSettings || {};
+
+  const minInterval = Number.parseInt(settings.minInterval, 10) || 60;
+  const maxIntervalRaw = Number.parseInt(settings.maxInterval, 10) || 120;
+  const minChanceRaw = Number.parseFloat(settings.minChance);
+
+  const maxInterval = Math.max(maxIntervalRaw, minInterval);
+  const minChance = Number.isFinite(minChanceRaw)
+    ? Math.min(100, Math.max(0, minChanceRaw))
+    : 30;
+
+  return { minInterval, maxInterval, minChance };
 }
 
 function calculateDelay(settings) {
@@ -28,7 +36,7 @@ async function scheduleNextAlarm() {
   const items = data.items || [];
 
   if (!items.length) {
-    chrome.alarms.clear("steamCheck");
+    await chrome.alarms.clear(ALARM_NAME);
     await chrome.storage.local.set({ nextCheckTime: 0 });
     return;
   }
@@ -39,9 +47,21 @@ async function scheduleNextAlarm() {
   const nextTime = Date.now() + delay * 1000;
   await chrome.storage.local.set({ nextCheckTime: nextTime });
 
-  chrome.alarms.create("steamCheck", {
+  chrome.alarms.create(ALARM_NAME, {
     delayInMinutes: delay / 60
   });
+}
+
+function parseSteamPrice(lowestPrice) {
+  if (typeof lowestPrice !== "string") return null;
+
+  const normalized = lowestPrice
+    .replace(/\s/g, "")
+    .replace(/[^\d.,]/g, "")
+    .replace(",", ".");
+
+  const value = Number.parseFloat(normalized);
+  return Number.isFinite(value) ? value : null;
 }
 
 async function checkAll() {
@@ -50,22 +70,29 @@ async function checkAll() {
 
   if (!items.length) return;
 
-  for (let item of items) {
+  for (const item of items) {
+    let response;
 
-    const response = await fetch(item.apiUrl, {
-      credentials: "omit"
-    });
+    try {
+      response = await fetch(item.apiUrl, { credentials: "omit" });
+    } catch {
+      continue;
+    }
 
     if (!response.ok) continue;
 
-    const json = await response.json();
+    let json;
+
+    try {
+      json = await response.json();
+    } catch {
+      continue;
+    }
+
     if (!json.success) continue;
 
-    const price = parseFloat(
-      json.lowest_price
-        .replace(/[^\d.,]/g, "")
-        .replace(",", ".")
-    );
+    const price = parseSteamPrice(json.lowest_price);
+    if (price === null) continue;
 
     const previous = item.previousPrice ?? item.startPrice;
 
@@ -93,24 +120,25 @@ async function checkAll() {
     item.previousPrice = price;
 
     if (triggered) {
-
       chrome.notifications.create({
         type: "basic",
-        iconUrl: "https://steamcommunity.com/favicon.ico",
-        title: "Steam ñèãíàë",
-        message: item.name + "\n–åíà: " + price
+        iconUrl: "icon.png",
+        title: "Steam Monitor",
+        message: `${item.name}\nÐ¦ÐµÐ½Ð°: ${price}`
       });
 
-      chrome.tabs.create({
-        url: item.pageUrl,
-        active: true
-      }, function(tab) {
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ["content.js"]
-        });
-      });
-
+      chrome.tabs.create(
+        {
+          url: item.pageUrl,
+          active: true
+        },
+        (tab) => {
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ["content.js"]
+          });
+        }
+      );
     }
   }
 
@@ -118,14 +146,22 @@ async function checkAll() {
   await scheduleNextAlarm();
 }
 
-chrome.alarms.onAlarm.addListener(function(alarm) {
-  if (alarm.name === "steamCheck") {
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === ALARM_NAME) {
     checkAll();
   }
 });
 
-chrome.storage.onChanged.addListener(function(changes) {
-  if (changes.items) {
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.items || changes.globalSettings) {
     scheduleNextAlarm();
   }
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  scheduleNextAlarm();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  scheduleNextAlarm();
 });

@@ -1,5 +1,17 @@
 const monitorView = document.getElementById("monitorView");
 const addView = document.getElementById("addView");
+const tabMonitor = document.getElementById("tabMonitor");
+const tabAdd = document.getElementById("tabAdd");
+const add = document.getElementById("add");
+const saveInterval = document.getElementById("saveInterval");
+
+const urlInput = document.getElementById("url");
+const currencyInput = document.getElementById("currency");
+const priceBelowInput = document.getElementById("priceBelow");
+const priceAboveInput = document.getElementById("priceAbove");
+const minIntervalInput = document.getElementById("minInterval");
+const maxIntervalInput = document.getElementById("maxInterval");
+const minChanceInput = document.getElementById("minChance");
 
 const draftFields = [
   "url",
@@ -25,7 +37,45 @@ function toast(text) {
   const t = document.getElementById("toast");
   t.innerText = text;
   t.style.display = "block";
-  setTimeout(()=> t.style.display="none",2000);
+  setTimeout(() => {
+    t.style.display = "none";
+  }, 2000);
+}
+
+function parsePriceValue(value) {
+  const parsed = Number.parseFloat(String(value).replace(",", "."));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getMarketHashName(link) {
+  let parsed;
+
+  try {
+    parsed = new URL(link);
+  } catch {
+    return null;
+  }
+
+  const segments = parsed.pathname.split("/").filter(Boolean);
+  const listingsIndex = segments.indexOf("listings");
+
+  if (listingsIndex === -1 || segments.length <= listingsIndex + 2) {
+    return null;
+  }
+
+  const hashNameSegments = segments.slice(listingsIndex + 2);
+  if (!hashNameSegments.length) return null;
+
+  return decodeURIComponent(hashNameSegments.join("/"));
+}
+
+async function loadSettingsIntoForm() {
+  const data = await chrome.storage.local.get("globalSettings");
+  const settings = data.globalSettings || {};
+
+  minIntervalInput.value = settings.minInterval ?? 60;
+  maxIntervalInput.value = settings.maxInterval ?? 120;
+  minChanceInput.value = settings.minChance ?? 30;
 }
 
 /* =========================
@@ -34,7 +84,7 @@ function toast(text) {
 
 async function saveDraft() {
   const draft = {};
-  draftFields.forEach(id=>{
+  draftFields.forEach((id) => {
     const el = document.getElementById(id);
     if (el) draft[id] = el.value;
   });
@@ -45,7 +95,7 @@ async function restoreDraft() {
   const data = await chrome.storage.local.get("draftForm");
   if (!data.draftForm) return;
 
-  draftFields.forEach(id=>{
+  draftFields.forEach((id) => {
     const el = document.getElementById(id);
     if (el && data.draftForm[id] !== undefined) {
       el.value = data.draftForm[id];
@@ -53,7 +103,7 @@ async function restoreDraft() {
   });
 }
 
-draftFields.forEach(id=>{
+draftFields.forEach((id) => {
   const el = document.getElementById(id);
   if (el) {
     el.addEventListener("input", saveDraft);
@@ -65,7 +115,6 @@ draftFields.forEach(id=>{
 ========================= */
 
 async function render() {
-
   const data = await chrome.storage.local.get([
     "items",
     "nextCheckTime"
@@ -77,12 +126,10 @@ async function render() {
   const now = Date.now();
   const remaining =
     nextCheckTime && nextCheckTime > now
-      ? Math.floor((nextCheckTime - now)/1000)
+      ? Math.floor((nextCheckTime - now) / 1000)
       : "-";
 
   monitorView.innerHTML = "";
-
-  /* ===== СТАТУС ===== */
 
   const status = document.createElement("div");
   status.className = "status";
@@ -92,18 +139,13 @@ async function render() {
       `🟢 Мониторинг активен<br>
        Следующая проверка через: ${remaining}`;
   } else {
-    status.innerHTML =
-      `⚪ Нет добавленных предметов`;
+    status.innerHTML = "⚪ Нет добавленных предметов";
   }
 
   monitorView.appendChild(status);
 
-  /* ===== СПИСОК ===== */
-
-  items.forEach((item,i)=>{
-
-    const symbol =
-      item.currency==="37"?"₸":"₽";
+  items.forEach((item, i) => {
+    const symbol = item.currency === "37" ? "₸" : "₽";
 
     const card = document.createElement("div");
     card.className = "card";
@@ -132,8 +174,8 @@ async function render() {
       <div class="name">${item.name}</div>
       <div>Текущая: ${item.currentPrice || "-"} ${symbol}</div>
       <div class="triggers">
-        ${item.priceBelow ? "↓ " + item.priceBelow + " " + symbol : ""}
-        ${item.priceAbove ? " ↑ " + item.priceAbove + " " + symbol : ""}
+        ${item.priceBelow ? `↓ ${item.priceBelow} ${symbol}` : ""}
+        ${item.priceAbove ? ` ↑ ${item.priceAbove} ${symbol}` : ""}
       </div>
       <div class="last">Последняя проверка: ${item.lastCheck || "-"}</div>
     `;
@@ -141,12 +183,11 @@ async function render() {
     const del = document.createElement("button");
     del.textContent = "Удалить";
 
-    del.onclick = async ()=>{
-      const data =
-        await chrome.storage.local.get("items");
-      const arr = data.items || [];
-      arr.splice(i,1);
-      await chrome.storage.local.set({items:arr});
+    del.onclick = async () => {
+      const saved = await chrome.storage.local.get("items");
+      const arr = saved.items || [];
+      arr.splice(i, 1);
+      await chrome.storage.local.set({ items: arr });
       render();
     };
 
@@ -160,29 +201,54 @@ async function render() {
 ========================= */
 
 add.onclick = async () => {
+  const link = urlInput.value.trim();
+  if (!link) {
+    toast("Введите ссылку на предмет");
+    return;
+  }
 
-  const link = url.value.trim();
-  if(!link) return;
+  const marketHashName = getMarketHashName(link);
 
-  const currencyVal = currency.value;
-  const marketHashName =
-    decodeURIComponent(link.split("/").pop());
+  if (!marketHashName) {
+    toast("Неверная ссылка Steam Market");
+    return;
+  }
+
+  const currencyVal = currencyInput.value;
 
   const apiUrl =
-    `https://steamcommunity.com/market/priceoverview/?appid=730&currency=${currencyVal}&market_hash_name=${marketHashName}`;
+    `https://steamcommunity.com/market/priceoverview/?appid=730&currency=${currencyVal}&market_hash_name=${encodeURIComponent(marketHashName)}`;
 
-  const response =
-    await fetch(apiUrl,{credentials:"omit"});
+  let response;
+
+  try {
+    response = await fetch(apiUrl, { credentials: "omit" });
+  } catch {
+    toast("Ошибка сети при запросе цены");
+    return;
+  }
+
+  if (!response.ok) {
+    toast("Steam API вернул ошибку");
+    return;
+  }
+
   const json = await response.json();
-  if(!json.success) return;
+  if (!json.success) {
+    toast("Не удалось получить цену предмета");
+    return;
+  }
 
-  const price =
-    parseFloat(json.lowest_price
-      .replace(/[^\d.,]/g,"")
-      .replace(",","."));
+  const price = parsePriceValue(
+    String(json.lowest_price).replace(/[^\d.,]/g, "")
+  );
 
-  const data =
-    await chrome.storage.local.get("items");
+  if (price === null) {
+    toast("Цена предмета недоступна");
+    return;
+  }
+
+  const data = await chrome.storage.local.get("items");
   const items = data.items || [];
 
   items.push({
@@ -193,18 +259,20 @@ add.onclick = async () => {
     startPrice: price,
     previousPrice: price,
     currentPrice: price,
-    priceBelow: parseFloat(priceBelow.value)||null,
-    priceAbove: parseFloat(priceAbove.value)||null
+    priceBelow: parsePriceValue(priceBelowInput.value),
+    priceAbove: parsePriceValue(priceAboveInput.value)
   });
 
-  await chrome.storage.local.set({items});
+  await chrome.storage.local.set({ items });
 
   await chrome.storage.local.remove("draftForm");
 
-  draftFields.forEach(id=>{
+  draftFields.forEach((id) => {
     const el = document.getElementById(id);
-    if (el) el.value="";
+    if (el) el.value = "";
   });
+
+  await loadSettingsIntoForm();
 
   toast("Предмет добавлен");
   render();
@@ -214,19 +282,40 @@ add.onclick = async () => {
    СОХРАНЕНИЕ ИНТЕРВАЛА
 ========================= */
 
-saveInterval.onclick = async ()=>{
+saveInterval.onclick = async () => {
+  const minInterval = Number.parseInt(minIntervalInput.value, 10);
+  const maxInterval = Number.parseInt(maxIntervalInput.value, 10);
+  const minChance = Number.parseFloat(minChanceInput.value);
+
+  if (!Number.isFinite(minInterval) || minInterval <= 0) {
+    toast("Мин. интервал должен быть > 0");
+    return;
+  }
+
+  if (!Number.isFinite(maxInterval) || maxInterval < minInterval) {
+    toast("Макс. интервал должен быть >= мин.");
+    return;
+  }
+
+  if (!Number.isFinite(minChance) || minChance < 0 || minChance > 100) {
+    toast("Шанс мин должен быть от 0 до 100");
+    return;
+  }
+
   const settings = {
-    minInterval:parseInt(minInterval.value)||60,
-    maxInterval:parseInt(maxInterval.value)||120,
-    minChance:parseFloat(minChance.value)||30
+    minInterval,
+    maxInterval,
+    minChance
   };
-  await chrome.storage.local.set({globalSettings:settings});
+
+  await chrome.storage.local.set({ globalSettings: settings });
   toast("Интервал сохранён");
 };
 
-setInterval(render,1000);
+setInterval(render, 1000);
 
-document.addEventListener("DOMContentLoaded", async ()=>{
+document.addEventListener("DOMContentLoaded", async () => {
   await restoreDraft();
+  await loadSettingsIntoForm();
   await render();
 });
