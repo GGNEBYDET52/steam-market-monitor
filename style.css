@@ -36,6 +36,20 @@ textarea,input,select{
   border-radius:6px;
 }
 
+.field-label{
+  display:block;
+  font-size:12px;
+  color:#c6d4e2;
+  margin:2px 0 4px;
+}
+
+.field-hint{
+  margin:0 0 8px;
+  font-size:11px;
+  line-height:1.35;
+  color:#9fb1c4;
+}
+
 button{
   padding:6px;
   margin-top:6px;
