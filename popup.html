@@ -33,9 +33,16 @@
 
   <h3>Интервал проверки</h3>
 
+  <label class="field-label" for="minInterval">Минимальный интервал (секунды)</label>
   <input id="minInterval" placeholder="Мин (сек)">
+
+  <label class="field-label" for="maxInterval">Максимальный интервал (секунды)</label>
   <input id="maxInterval" placeholder="Макс (сек)">
+
+  <label class="field-label" for="minChance">Минимальный шанс (в процентах)</label>
   <input id="minChance" placeholder="Шанс мин (%)">
+
+  <p class="field-hint">Пример: 60 / 120 / 30 означает случайный интервал 60–120 сек, если шанс не ниже 30%.</p>
 
   <button id="saveInterval">Сохранить интервал</button>
 
